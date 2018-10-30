@@ -111,6 +111,9 @@ for WORKER in $(seq 1 $WORKERS); do
   docker rm catchup-$WORKER
   rsync -a ./history-$WORKER/ ./history-result/
   rm -rf ./history-$WORKER
+
+  # clean up worker containers and volumes
+  docker-compose -p catchup-$WORKER down -v
 done
 
 log "Done"
