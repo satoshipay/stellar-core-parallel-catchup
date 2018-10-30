@@ -3,10 +3,12 @@
 # Hacky parallel catchup
 # see also https://github.com/stellar/docs/blob/3d060c0f1afb2eaff8a4076f673a8688d36e4aa5/software/known-issues.md
 
-set -eu pipefail
+set -eu
+set -o pipefail
 
 if [ "$#" -ne 2 ]; then
   echo "Usage: ./catchup.sh LEDGER_MAX WORKERS"
+  exit 1
 fi
 
 LEDGER_MAX=$1
