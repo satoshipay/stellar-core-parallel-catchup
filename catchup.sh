@@ -120,7 +120,7 @@ fi
 # merge results
 log "Starting result database..."
 docker-compose -p catchup-result up -d stellar-core-postgres
-sleep 30
+sleep 60
 docker-compose -p catchup-result run stellar-core stellar-core --conf /stellar-core.cfg --newdb
 
 # wipe data to prevent conflicts with job 1
