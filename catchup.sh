@@ -72,9 +72,9 @@ worker() {
     read -u 201 JOB_ID JOB_LEDGER_MIN JOB_LEDGER_MAX || { log "Worker $WORKER: finished."; exit 0; }
     flock -u 202
 
-    log "Worker $WORKER: starting job $JOB_ID ($JOB_LEDGER_MIN, $JOB_LEDGER_MAX)."
+    log "Worker $WORKER: starting job $JOB_ID (ledgers ${JOB_LEDGER_MIN}–${JOB_LEDGER_MAX})."
     run-catchup-job $JOB_ID $JOB_LEDGER_MIN $JOB_LEDGER_MAX
-    log "Worker $WORKER: finished job $JOB_ID ($JOB_LEDGER_MIN, $JOB_LEDGER_MAX)."
+    log "Worker $WORKER: finished job $JOB_ID (ledgers ${JOB_LEDGER_MIN}–${JOB_LEDGER_MAX})."
   done
 }
 
