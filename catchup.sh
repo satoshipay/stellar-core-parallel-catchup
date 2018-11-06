@@ -15,16 +15,14 @@ LEDGER_MAX=$1
 CHUNK_SIZE=$2
 WORKERS=$3
 
-# init job queue and lock
-WORKER_START=$(mktemp -t worker-start-XXXX)
-WORKER_START_LOCK=$(mktemp -t worker-start-lock-XXXX)
-JOB_QUEUE=$(mktemp -u -t job-queue-XXXX)
-JOB_QUEUE_LOCK=$(mktemp -t job-queue-lock-XXXX)
+# temporary files, job queue, and locks
+PREFIX=$(mktemp -u -t catchup-XXXX)
+JOB_QUEUE=${PREFIX}-job-queue
+JOB_QUEUE_LOCK=${PREFIX}-job-queue-lock
+touch $JOB_QUEUE_LOCK
 mkfifo $JOB_QUEUE
 
 cleanup() {
-  rm $WORKER_START
-  rm $WORKER_START_LOCK
   rm $JOB_QUEUE
   rm $JOB_QUEUE_LOCK
 }
@@ -48,22 +46,21 @@ run-catchup-job() {
 
   docker-compose -p catchup-job-${JOB_ID} up -d stellar-core-postgres
   sleep 30
-  docker-compose -p catchup-job-${JOB_ID} run stellar-core stellar-core --conf /stellar-core.cfg --newdb
-  docker-compose -p catchup-job-${JOB_ID} run stellar-core stellar-core --conf /stellar-core.cfg --newhist local
-  docker-compose -p catchup-job-${JOB_ID} run -d stellar-core stellar-core --conf /stellar-core.cfg $CATCHUP_AT $CATCHUP_TO
+  docker-compose -p catchup-job-${JOB_ID} run -e INITIALIZE_HISTORY_ARCHIVES=true stellar-core stellar-core --conf /stellar-core.cfg $CATCHUP_AT $CATCHUP_TO 2>&1 > ${PREFIX}-job-${JOB_ID}.log
+
+  # free up resources (ram, networks), volumes are retained
+  docker-compose -p catchup-job-${JOB_ID} down
+
+  touch ${PREFIX}-job-${JOB_ID}-finished
 }
 
 worker() {
   WORKER=$1
 
-  exec 200>$WORKER_START_LOCK
   exec 201<$JOB_QUEUE
   exec 202<$JOB_QUEUE_LOCK
 
-  flock 200
-  echo $WORKER > $WORKER_START
-  flock -u 200
-  exec 200<&-
+  touch ${PREFIX}-worker-$WORKER-started
 
   log "Worker $WORKER: started."
 
@@ -88,22 +85,19 @@ if [ "$(( MAX_JOB_ID * CHUNK_SIZE ))" -lt "$LEDGER_MAX" ]; then
   MAX_JOB_ID=$(( MAX_JOB_ID + 1 ))
 fi
 
+log "Running $MAX_JOB_ID jobs with $WORKERS workers"
+
 # job producer
 {
-  exec 200<$WORKER_START_LOCK
   exec 201>$JOB_QUEUE
 
+  log "wait for workers"
   # wait for workers to start
-  while true; do
-    flock 200
-    WORKERS_STARTED=$(wc -l $WORKER_START | cut -d \  -f 1)
-    flock -u 200
-    if [ "$WORKERS_STARTED" != "$WORKERS" ]; then
-      break
-    fi
-    sleep 1
+  for WORKER in $(seq 1 $WORKERS); do
+    while [ ! -f ${PREFIX}-worker-$WORKER-started ]; do
+      sleep 1
+    done
   done
-  exec 200<&-
 
   # produce jobs
   for JOB_ID in $(seq 1 $MAX_JOB_ID); do
@@ -131,10 +125,14 @@ done
 
 for JOB_ID in $(seq 1 $MAX_JOB_ID); do
   log "Waiting for job $JOB_ID..."
-  while docker-compose -p catchup-job-${JOB_ID} ps stellar-core | grep stellar-core; do
+  while [ ! -f ${PREFIX}-job-${JOB_ID}-finished ]; do
     sleep 10
   done
-  log "Job $JOB_ID finished."
+  rm -f ${PREFIX}-job-${JOB_ID}-finished
+  log "Job $JOB_ID finished, recreating database container..."
+
+  docker-compose -p catchup-job-${JOB_ID} up -d stellar-core-postgres
+  sleep 30
 
   JOB_LEDGER_MIN=$(( (JOB_ID - 1) * CHUNK_SIZE + 1))
   JOB_LEDGER_MAX=$(( JOB_ID * CHUNK_SIZE ))

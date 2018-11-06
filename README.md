@@ -26,4 +26,8 @@ If you need to start from scratch again you can delete all docker-compose projec
 
 ```
 for PROJECT in $(docker ps --filter "label=com.docker.compose.project" -q | xargs docker inspect --format='{{index .Config.Labels "com.docker.compose.project"}}'| uniq | grep catchup-); do docker-compose -p $PROJECT down -v; done
+docker volume prune
 ```
+
+## Fast sync on dedicated gcloud machine
+
