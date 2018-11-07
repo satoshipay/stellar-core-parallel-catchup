@@ -31,3 +31,32 @@ docker volume prune
 
 ## Fast sync on dedicated gcloud machine
 
+```
+sudo apt-get update
+sudo apt-get install -y \
+  apt-transport-https \
+  ca-certificates \
+  curl \
+  gnupg2 \
+  software-properties-common \
+  python-pip
+curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -
+sudo add-apt-repository \
+  "deb [arch=amd64] https://download.docker.com/linux/debian \
+  $(lsb_release -cs) \
+  stable"
+sudo apt-get update
+sudo apt-get install -y docker-ce
+sudo pip install docker-compose
+sudo echo '{"default-address-pools":[{"base":"172.80.0.0/16","size":29}]}' > /etc/docker/daemon.json
+sudo usermod -G docker andre
+# log out and log in again and verify that docker is working
+docker ps
+```
+
+```
+git clone git@gitlab.satoshipay.tech:stellar/parallel-catchup.git
+# add user to
+cd parallel-catchup
+./catchup 20800000 50000 28
+```
