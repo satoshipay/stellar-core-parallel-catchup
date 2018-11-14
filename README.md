@@ -25,7 +25,7 @@ A full catchup takes weeks/months – even without publishing to an archive.
 If you need to start from scratch again you can delete all docker-compose projects:
 
 ```
-for PROJECT in $(docker ps --filter "label=com.docker.compose.project" -q | xargs docker inspect --format='{{index .Config.Labels "com.docker.compose.project"}}'| uniq | grep catchup-); do docker-compose -p $PROJECT down -v; done
+for PROJECT in $(docker ps --filter "label=com.docker.compose.project" -q | xargs docker inspect --format='{{index .Config.Labels "com.docker.compose.project"}}'| uniq | grep catchup-); do docker-compose -f docker-compose.pubnet.yaml -p $PROJECT down -v; done
 docker volume prune
 ```
 
@@ -58,5 +58,5 @@ docker ps
 ```
 git clone git@gitlab.satoshipay.tech:stellar/parallel-catchup.git
 cd parallel-catchup
-./catchup.sh docker-compose.pubnet.yaml 20971520 32768 24 2>&1 | tee catchup.log
+./catchup.sh docker-compose.pubnet.yaml 20971520 32768 32 2>&1 | tee catchup.log
 ```
