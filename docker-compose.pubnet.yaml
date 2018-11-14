@@ -1,7 +1,7 @@
 version: '3'
 services:
   stellar-core-postgres:
-    image: postgres:9
+    image: postgres:10
     restart: on-failure
     volumes:
       - db-data:/var/lib/postgresql/data
@@ -17,6 +17,8 @@ services:
     environment:
       - DATABASE=postgresql://dbname=stellar-core user=postgres password=DATABASE_PASSWORD host=stellar-core-postgres
       - DATABASE_PASSWORD=RonUQgj23En5Mmo4
+      - INITIALIZE_DB=false
+      - INITIALIZE_HISTORY_ARCHIVES=false
       # public key GACVY6FX6ZSGBEWQF6DG25VOAB25F72EI4WS676QIO3HO2YBKAKDI44H
       - NODE_SEED=SDEZOI3BOCW6DUY23ZCJQALULOIEIQMZW4UTFXPRQEMMJMOG7CVD7WMO satoshipay-catchup
       - NODE_IS_VALIDATOR=true

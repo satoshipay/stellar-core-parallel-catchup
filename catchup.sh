@@ -38,10 +38,14 @@ run-catchup-job() {
   CATCHUP_LEDGER_MIN=$2
   CATCHUP_LEDGER_MAX=$3
 
+  JOB_LOG_FILE=${PREFIX}-job-${JOB_ID}.log
+
   docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} up -d stellar-core-postgres
   sleep 30
-  docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} run -e INITIALIZE_HISTORY_ARCHIVES=true stellar-core stellar-core catchup $CATCHUP_LEDGER_MAX/$(($CATCHUP_LEDGER_MAX - $CATCHUP_LEDGER_MIN)) --conf /stellar-core.cfg 2>&1 > ${PREFIX}-job-${JOB_ID}.log
-  docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} run stellar-core stellar-core publish --conf /stellar-core.cfg 2>&1 >> ${PREFIX}-job-${JOB_ID}.log
+  docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} run stellar-core stellar-core new-db --conf /stellar-core.cfg 2>&1 > $JOB_LOG_FILE
+  docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} run stellar-core stellar-core new-hist local --conf /stellar-core.cfg 2>&1 >> $JOB_LOG_FILE
+  docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} run stellar-core stellar-core catchup $CATCHUP_LEDGER_MAX/$(($CATCHUP_LEDGER_MAX - $CATCHUP_LEDGER_MIN)) --conf /stellar-core.cfg 2>&1 >> $JOB_LOG_FILE
+  docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} run stellar-core stellar-core publish --conf /stellar-core.cfg 2>&1 >> $JOB_LOG_FILE
 
   # free up resources (ram, networks), volumes are retained
   docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} down
@@ -171,6 +175,10 @@ for JOB_ID in $(seq 1 $MAX_JOB_ID); do
   log "Merging history of job $JOB_ID..."
   docker container create --name catchup-job-${JOB_ID} -v catchup-job-${JOB_ID}_core-data:/data hello-world
   docker cp catchup-job-${JOB_ID}:/data/history ./history-${JOB_ID}
+  if [ "$JOB_ID" = "$MAX_JOB_ID" ]; then
+    log "Copy all data from job ${JOB_ID}..."
+    docker cp catchup-job-${JOB_ID}:/data ./data-result
+  fi
   docker rm catchup-job-${JOB_ID}
   rsync -a ./history-${JOB_ID}/ ./history-result/
   rm -rf ./history-${JOB_ID}
