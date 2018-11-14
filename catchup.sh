@@ -131,7 +131,7 @@ for JOB_ID in $(seq 1 $MAX_JOB_ID); do
   log "Job $JOB_ID finished, recreating database container..."
 
   docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} up -d stellar-core-postgres
-  sleep 30
+  sleep 15
 
   JOB_LEDGER_MIN=$(( (JOB_ID - 1) * CHUNK_SIZE + 1))
   JOB_LEDGER_MAX=$(( JOB_ID * CHUNK_SIZE ))
