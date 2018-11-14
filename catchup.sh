@@ -38,8 +38,6 @@ run-catchup-job() {
   CATCHUP_LEDGER_MIN=$2
   CATCHUP_LEDGER_MAX=$3
 
-  CATCHUP_TO="--catchup-to $CATCHUP_LEDGER_MAX"
-
   docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} up -d stellar-core-postgres
   sleep 30
   docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} run -e INITIALIZE_HISTORY_ARCHIVES=true stellar-core stellar-core catchup $CATCHUP_LEDGER_MAX/$(($CATCHUP_LEDGER_MAX - $CATCHUP_LEDGER_MIN)) --conf /stellar-core.cfg 2>&1 > ${PREFIX}-job-${JOB_ID}.log
