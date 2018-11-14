@@ -10,7 +10,7 @@ services:
       - POSTGRES_PASSWORD=RonUQgj23En5Mmo4
 
   stellar-core:
-    image: satoshipay/stellar-core:10.0.0-2
+    image: satoshipay/stellar-core:dev-vogel-publish-command-1
     restart: on-failure
     volumes:
       - core-data:/data
