@@ -1,0 +1,65 @@
+version: '3'
+services:
+  stellar-core-postgres:
+    image: postgres:9
+    restart: on-failure
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=stellar-core
+      - POSTGRES_PASSWORD=RonUQgj23En5Mmo4
+
+  stellar-core:
+    image: satoshipay/stellar-core:dev-vogel-publish-command-1
+    restart: on-failure
+    volumes:
+      - core-data:/data
+    environment:
+      - DATABASE=postgresql://dbname=stellar-core user=postgres password=DATABASE_PASSWORD host=stellar-core-postgres
+      - DATABASE_PASSWORD=RonUQgj23En5Mmo4
+      # public key GACVY6FX6ZSGBEWQF6DG25VOAB25F72EI4WS676QIO3HO2YBKAKDI44H
+      - NODE_SEED=SDEZOI3BOCW6DUY23ZCJQALULOIEIQMZW4UTFXPRQEMMJMOG7CVD7WMO satoshipay-catchup
+      - NODE_IS_VALIDATOR=true
+      - NETWORK_PASSPHRASE=Test SDF Network ; September 2015
+      - MAX_PEER_CONNECTIONS=30
+      - "KNOWN_PEERS=\
+        core-testnet1.stellar.org,\
+        core-testnet2.stellar.org,\
+        core-testnet3.stellar.org"
+      - "PREFERRED_PEERS=\
+        core-testnet1.stellar.org,\
+        core-testnet2.stellar.org,\
+        core-testnet3.stellar.org"
+      - "NODE_NAMES=\
+        GDKXE2OZMJIPOSLNA6N6F2BVCI3O777I2OOC4BV7VOYUEHYX7RTRYA7Y sdf1,\
+        GCUCJTIYXSOXKBSNFGNFWW5MUQ54HKRPGJUTQFJ5RQXZXNOLNXYDHRAP sdf2,\
+        GC2V2EFSXN6SQTWVYA5EPJPBWWIMSD2XQNKUOHGEKB535AQE2I6IXV2Z sdf3"
+      - >-
+          QUORUM_SET=[
+            {
+              "threshold_percent": 66,
+              "validators": [
+                "$$sdf1",
+                "$$sdf2",
+                "$$sdf3"
+              ]
+            }
+          ]
+      - KNOWN_CURSORS=HORIZON
+      - UNSAFE_QUORUM=true
+      - FAILURE_SAFETY=1
+      - >-
+          HISTORY={
+            "sdf1": {"get": "curl -sf http://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-testnet/core_testnet_001/{0} -o {1}"},
+            "sdf2": {"get": "curl -sf http://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-testnet/core_testnet_002/{0} -o {1}"},
+            "sdf3": {"get": "curl -sf http://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-testnet/core_testnet_003/{0} -o {1}"},
+            "local": {
+              "get": "cp /data/history/{0} {1}",
+              "put": "cp {0} /data/history/{1}",
+              "mkdir": "mkdir -p /data/history/{0}"
+            }
+          }
+
+volumes:
+  db-data:
+  core-data:

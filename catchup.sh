@@ -6,14 +6,15 @@
 set -eu
 set -o pipefail
 
-if [ "$#" -ne 3 ]; then
-  echo "Usage: ./catchup.sh LEDGER_MAX CHUNK_SIZE WORKERS"
+if [ "$#" -ne 4 ]; then
+  echo "Usage: ./catchup.sh DOCKER_COMPOSE_FILE LEDGER_MAX CHUNK_SIZE WORKERS"
   exit 1
 fi
 
-LEDGER_MAX=$1
-CHUNK_SIZE=$2
-WORKERS=$3
+DOCKER_COMPOSE_FILE=$1
+LEDGER_MAX=$2
+CHUNK_SIZE=$3
+WORKERS=$4
 
 # temporary files, job queue, and locks
 PREFIX=$(mktemp -u -t catchup-XXXX)
@@ -37,19 +38,15 @@ run-catchup-job() {
   CATCHUP_LEDGER_MIN=$2
   CATCHUP_LEDGER_MAX=$3
 
-  if [ "$CATCHUP_LEDGER_MIN" = "1" ]; then
-    CATCHUP_AT=""
-  else
-    CATCHUP_AT="--catchup-at $CATCHUP_LEDGER_MIN"
-  fi
   CATCHUP_TO="--catchup-to $CATCHUP_LEDGER_MAX"
 
-  docker-compose -p catchup-job-${JOB_ID} up -d stellar-core-postgres
+  docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} up -d stellar-core-postgres
   sleep 30
-  docker-compose -p catchup-job-${JOB_ID} run -e INITIALIZE_HISTORY_ARCHIVES=true stellar-core stellar-core --conf /stellar-core.cfg $CATCHUP_AT $CATCHUP_TO 2>&1 > ${PREFIX}-job-${JOB_ID}.log
+  docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} run -e INITIALIZE_HISTORY_ARCHIVES=true stellar-core stellar-core catchup $CATCHUP_LEDGER_MAX/$(($CATCHUP_LEDGER_MAX - $CATCHUP_LEDGER_MIN)) --conf /stellar-core.cfg 2>&1 > ${PREFIX}-job-${JOB_ID}.log
+  docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} run stellar-core stellar-core publish --conf /stellar-core.cfg 2>&1 >> ${PREFIX}-job-${JOB_ID}.log
 
   # free up resources (ram, networks), volumes are retained
-  docker-compose -p catchup-job-${JOB_ID} down
+  docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} down
 
   touch ${PREFIX}-job-${JOB_ID}-finished
 }
@@ -113,13 +110,13 @@ log "Running $MAX_JOB_ID jobs with $WORKERS workers"
 
 # merge results
 log "Starting result database..."
-docker-compose -p catchup-result up -d stellar-core-postgres
+docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-result up -d stellar-core-postgres
 sleep 60
-docker-compose -p catchup-result run stellar-core stellar-core --conf /stellar-core.cfg --newdb
+docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-result run stellar-core stellar-core new-db --conf /stellar-core.cfg
 
 # wipe data to prevent conflicts with job 1
 for TABLE in ledgerheaders txhistory txfeehistory; do
-  docker-compose -p catchup-result exec -T stellar-core-postgres \
+  docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-result exec -T stellar-core-postgres \
     psql stellar-core postgres -c "DELETE FROM $TABLE"
 done
 
@@ -131,7 +128,7 @@ for JOB_ID in $(seq 1 $MAX_JOB_ID); do
   rm -f ${PREFIX}-job-${JOB_ID}-finished
   log "Job $JOB_ID finished, recreating database container..."
 
-  docker-compose -p catchup-job-${JOB_ID} up -d stellar-core-postgres
+  docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} up -d stellar-core-postgres
   sleep 30
 
   JOB_LEDGER_MIN=$(( (JOB_ID - 1) * CHUNK_SIZE + 1))
@@ -143,8 +140,8 @@ for JOB_ID in $(seq 1 $MAX_JOB_ID); do
   if [ "$JOB_ID" != "1" ]; then
     log "Match last hash of result data with previous hash of the first ledger of job $JOB_ID"
     LAST_RESULT_LEDGER=$(( JOB_LEDGER_MIN - 1))
-    LAST_RESULT_HASH=$(docker-compose -p catchup-result exec stellar-core-postgres psql -t stellar-core postgres -c "SELECT ledgerhash FROM ledgerheaders WHERE ledgerseq = $LAST_RESULT_LEDGER")
-    PREVIOUS_JOB_HASH=$(docker-compose -p catchup-job-${JOB_ID} exec stellar-core-postgres psql -t stellar-core postgres -c "SELECT prevhash FROM ledgerheaders WHERE ledgerseq = $JOB_LEDGER_MIN")
+    LAST_RESULT_HASH=$(docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-result exec stellar-core-postgres psql -t stellar-core postgres -c "SELECT ledgerhash FROM ledgerheaders WHERE ledgerseq = $LAST_RESULT_LEDGER")
+    PREVIOUS_JOB_HASH=$(docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} exec stellar-core-postgres psql -t stellar-core postgres -c "SELECT prevhash FROM ledgerheaders WHERE ledgerseq = $JOB_LEDGER_MIN")
     if [ "$LAST_RESULT_HASH" != "$PREVIOUS_JOB_HASH" ]; then
       log "Last result hash $LAST_RESULT_HASH (ledger $LAST_RESULT_LEDGER) does not match previous hash $PREVIOUS_JOB_HASH of first ledger of job $JOB_ID (ledger $JOB_LEDGER_MIN)"
       exit 1
@@ -153,9 +150,9 @@ for JOB_ID in $(seq 1 $MAX_JOB_ID); do
 
   log "Merging database of job $JOB_ID in result database..."
   for TABLE in ledgerheaders txhistory txfeehistory; do
-    docker-compose -p catchup-job-${JOB_ID} exec -T stellar-core-postgres \
+    docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} exec -T stellar-core-postgres \
       psql stellar-core postgres -c "COPY (SELECT * FROM $TABLE WHERE ledgerseq >= $JOB_LEDGER_MIN AND ledgerseq <= $JOB_LEDGER_MAX) TO STDOUT" |
-      docker-compose -p catchup-result exec -T stellar-core-postgres \
+      docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-result exec -T stellar-core-postgres \
       psql stellar-core postgres -c "COPY $TABLE FROM STDIN"
   done
 
@@ -163,12 +160,12 @@ for JOB_ID in $(seq 1 $MAX_JOB_ID); do
     log "Copy state from job $JOB_ID to result database..."
     for TABLE in accountdata accounts ban offers peers publishqueue pubsub scphistory scpquorums signers storestate trustlines upgradehistory; do
       # wipe existing data
-      docker-compose -p catchup-result exec -T stellar-core-postgres \
+      docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-result exec -T stellar-core-postgres \
         psql stellar-core postgres -c "DELETE FROM $TABLE"
       # copy state
-      docker-compose -p catchup-job-${JOB_ID} exec -T stellar-core-postgres \
+      docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} exec -T stellar-core-postgres \
         psql stellar-core postgres -c "COPY $TABLE TO STDOUT" |
-        docker-compose -p catchup-result exec -T stellar-core-postgres \
+        docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-result exec -T stellar-core-postgres \
         psql stellar-core postgres -c "COPY $TABLE FROM STDIN"
     done
   fi
@@ -181,7 +178,7 @@ for JOB_ID in $(seq 1 $MAX_JOB_ID); do
   rm -rf ./history-${JOB_ID}
 
   # clean up job containers and volumes
-  docker-compose -p catchup-job-${JOB_ID} down -v
+  docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} down -v
 done
 
 wait

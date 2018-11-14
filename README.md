@@ -56,7 +56,6 @@ docker ps
 
 ```
 git clone git@gitlab.satoshipay.tech:stellar/parallel-catchup.git
-# add user to
 cd parallel-catchup
-./catchup 20800000 50000 28
+./catchup docker-compose.pubnet.yaml 20800000 50000 28
 ```
