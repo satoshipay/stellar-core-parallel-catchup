@@ -48,7 +48,7 @@ sudo add-apt-repository \
 sudo apt-get update
 sudo apt-get install -y docker-ce
 sudo pip install docker-compose
-sudo echo '{"default-address-pools":[{"base":"172.80.0.0/16","size":29}]}' > /etc/docker/daemon.json
+echo '{"default-address-pools":[{"base":"172.80.0.0/16","size":29}]}' | sudo tee /etc/docker/daemon.json
 sudo usermod -G docker andre
 sudo reboot
 # log in again and check whether docker works
