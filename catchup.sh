@@ -151,7 +151,7 @@ for JOB_ID in $(seq 1 $MAX_JOB_ID); do
   fi
 
   log "Merging database of job $JOB_ID in result database..."
-  for TABLE in ledgerheaders txhistory txfeehistory; do
+  for TABLE in ledgerheaders txhistory txfeehistory upgradehistory; do
     docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} exec -T stellar-core-postgres \
       psql stellar-core postgres -c "COPY (SELECT * FROM $TABLE WHERE ledgerseq >= $JOB_LEDGER_MIN AND ledgerseq <= $JOB_LEDGER_MAX) TO STDOUT" |
       docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-result exec -T stellar-core-postgres \
@@ -160,7 +160,7 @@ for JOB_ID in $(seq 1 $MAX_JOB_ID); do
 
   if [ "$JOB_ID" = "$MAX_JOB_ID" ]; then
     log "Copy state from job $JOB_ID to result database..."
-    for TABLE in accountdata accounts ban offers peers publishqueue pubsub scphistory scpquorums signers storestate trustlines upgradehistory; do
+    for TABLE in accountdata accounts ban offers peers publishqueue pubsub scphistory scpquorums signers storestate trustlines; do
       # wipe existing data
       docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-result exec -T stellar-core-postgres \
         psql stellar-core postgres -c "DELETE FROM $TABLE"
