@@ -59,5 +59,5 @@ docker ps
 git clone git@gitlab.satoshipay.tech:stellar/parallel-catchup.git
 cd parallel-catchup
 ./catchup.sh docker-compose.pubnet.yaml 1 20971520 32768 32 2>&1 | tee catchup.log
-docker exec -it catchup-result_stellar-core-postgres_1 pg_dump -U postgres -d stellar-core | gzip > catchup.sqldump.gz
+docker exec catchup-result_stellar-core-postgres_1 pg_dump -U postgres -d stellar-core | gzip > catchup.sqldump.gz
 ```
