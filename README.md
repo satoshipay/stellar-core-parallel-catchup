@@ -19,7 +19,7 @@ A full catchup takes weeks/months – even without publishing to an archive.
 ## Usage
 
 ```
-./catchup.sh DOCKER_COMPOSE_FILE LEDGER_MAX CHUNK_SIZE WORKERS
+./catchup.sh DOCKER_COMPOSE_FILE LEDGER_MIN LEDGER_MAX CHUNK_SIZE WORKERS
 ```
 
 If you need to start from scratch again you can delete all docker-compose projects:
@@ -58,6 +58,6 @@ docker ps
 ```
 git clone git@gitlab.satoshipay.tech:stellar/parallel-catchup.git
 cd parallel-catchup
-./catchup.sh docker-compose.pubnet.yaml 20971520 32768 32 2>&1 | tee catchup.log
+./catchup.sh docker-compose.pubnet.yaml 1 20971520 32768 32 2>&1 | tee catchup.log
 docker exec -it catchup-result_stellar-core-postgres_1 pg_dump -U postgres -d stellar-core | gzip > catchup.sqldump.gz
 ```

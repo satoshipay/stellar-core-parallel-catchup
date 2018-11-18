@@ -6,15 +6,16 @@
 set -eu
 set -o pipefail
 
-if [ "$#" -ne 4 ]; then
-  echo "Usage: ./catchup.sh DOCKER_COMPOSE_FILE LEDGER_MAX CHUNK_SIZE WORKERS"
+if [ "$#" -ne 5 ]; then
+  echo "Usage: ./catchup.sh DOCKER_COMPOSE_FILE LEDGER_MIN LEDGER_MAX CHUNK_SIZE WORKERS"
   exit 1
 fi
 
 DOCKER_COMPOSE_FILE=$1
-LEDGER_MAX=$2
-CHUNK_SIZE=$3
-WORKERS=$4
+LEDGER_MIN=$2
+LEDGER_MAX=$3
+CHUNK_SIZE=$4
+WORKERS=$5
 
 # temporary files, job queue, and locks
 PREFIX=$(mktemp -u -t catchup-XXXX)
@@ -79,8 +80,8 @@ for WORKER in $(seq 1 $WORKERS); do
   worker $WORKER &
 done
 
-MAX_JOB_ID=$(( LEDGER_MAX / CHUNK_SIZE ))
-if [ "$(( MAX_JOB_ID * CHUNK_SIZE ))" -lt "$LEDGER_MAX" ]; then
+MAX_JOB_ID=$(( ( LEDGER_MAX - LEDGER_MIN ) / CHUNK_SIZE ))
+if [ "$(( LEDGER_MIN - 1 + MAX_JOB_ID * CHUNK_SIZE ))" -lt "$LEDGER_MAX" ]; then
   MAX_JOB_ID=$(( MAX_JOB_ID + 1 ))
 fi
 
@@ -100,8 +101,8 @@ log "Running $MAX_JOB_ID jobs with $WORKERS workers"
 
   # produce jobs
   for JOB_ID in $(seq 1 $MAX_JOB_ID); do
-    JOB_LEDGER_MIN=$(( (JOB_ID - 1) * CHUNK_SIZE + 1))
-    JOB_LEDGER_MAX=$(( JOB_ID * CHUNK_SIZE ))
+    JOB_LEDGER_MIN=$(( LEDGER_MIN + (JOB_ID - 1) * CHUNK_SIZE))
+    JOB_LEDGER_MAX=$(( LEDGER_MIN - 1 + JOB_ID * CHUNK_SIZE ))
     if [ "$JOB_LEDGER_MAX" -ge "$LEDGER_MAX" ]; then
       JOB_LEDGER_MAX=$LEDGER_MAX
     fi
@@ -117,7 +118,7 @@ sleep 60
 docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-result run stellar-core stellar-core new-db --conf /stellar-core.cfg
 
 # wipe data to prevent conflicts with job 1
-for TABLE in ledgerheaders txhistory txfeehistory; do
+for TABLE in ledgerheaders txhistory txfeehistory upgradehistory; do
   docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-result exec -T stellar-core-postgres \
     psql stellar-core postgres -c "DELETE FROM $TABLE"
 done
@@ -133,8 +134,8 @@ for JOB_ID in $(seq 1 $MAX_JOB_ID); do
   docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} up -d stellar-core-postgres
   sleep 15
 
-  JOB_LEDGER_MIN=$(( (JOB_ID - 1) * CHUNK_SIZE + 1))
-  JOB_LEDGER_MAX=$(( JOB_ID * CHUNK_SIZE ))
+  JOB_LEDGER_MIN=$(( LEDGER_MIN + (JOB_ID - 1) * CHUNK_SIZE))
+  JOB_LEDGER_MAX=$(( LEDGER_MIN - 1 + JOB_ID * CHUNK_SIZE ))
   if [ "$JOB_LEDGER_MAX" -ge "$LEDGER_MAX" ]; then
     JOB_LEDGER_MAX=$LEDGER_MAX
   fi
