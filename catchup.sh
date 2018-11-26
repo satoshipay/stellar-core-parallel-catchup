@@ -154,9 +154,9 @@ for JOB_ID in $(seq 1 $MAX_JOB_ID); do
   log "Merging database of job $JOB_ID in result database..."
   for TABLE in ledgerheaders txhistory txfeehistory upgradehistory; do
     docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} exec -T stellar-core-postgres \
-      psql stellar-core postgres -c "COPY (SELECT * FROM $TABLE WHERE ledgerseq >= $JOB_LEDGER_MIN AND ledgerseq <= $JOB_LEDGER_MAX) TO STDOUT" |
+      psql stellar-core postgres -c "COPY (SELECT * FROM $TABLE WHERE ledgerseq >= $JOB_LEDGER_MIN AND ledgerseq <= $JOB_LEDGER_MAX) TO STDOUT WITH (FORMAT BINARY)" |
       docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-result exec -T stellar-core-postgres \
-      psql stellar-core postgres -c "COPY $TABLE FROM STDIN"
+      psql stellar-core postgres -c "COPY $TABLE FROM STDIN WITH (FORMAT BINARY)"
   done
 
   if [ "$JOB_ID" = "$MAX_JOB_ID" ]; then
@@ -167,9 +167,9 @@ for JOB_ID in $(seq 1 $MAX_JOB_ID); do
         psql stellar-core postgres -c "DELETE FROM $TABLE"
       # copy state
       docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} exec -T stellar-core-postgres \
-        psql stellar-core postgres -c "COPY $TABLE TO STDOUT" |
+        psql stellar-core postgres -c "COPY $TABLE TO STDOUT WITH (FORMAT BINARY)" |
         docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-result exec -T stellar-core-postgres \
-        psql stellar-core postgres -c "COPY $TABLE FROM STDIN"
+        psql stellar-core postgres -c "COPY $TABLE FROM STDIN WITH (FORMAT BINARY)"
     done
   fi
 
@@ -185,7 +185,10 @@ for JOB_ID in $(seq 1 $MAX_JOB_ID); do
   rm -rf ./history-${JOB_ID}
 
   # clean up job containers and volumes
-  docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} down -v
+  # docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} down -v
+
+  # clean up job containers
+  docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} down
 done
 
 wait
