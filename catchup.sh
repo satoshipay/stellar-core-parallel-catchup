@@ -185,10 +185,7 @@ for JOB_ID in $(seq 1 $MAX_JOB_ID); do
   rm -rf ./history-${JOB_ID}
 
   # clean up job containers and volumes
-  # docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} down -v
-
-  # clean up job containers
-  docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} down
+  docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-job-${JOB_ID} down -v
 done
 
 wait
