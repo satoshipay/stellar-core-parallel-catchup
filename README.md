@@ -1,4 +1,4 @@
-# Parallel Stellar Core Catchup
+# Parallel Stellar Core Catchup ⚡
 
 ## Background
 
@@ -78,7 +78,7 @@ You will get 3 important pieces of data for Stellar Core:
     Then copy the `catchup-sqldump` directory to the target container/machine and restore with `pg_restore`.
 
 * `data-result` directory: contains the `buckets` directory that Stellar Core needs for continuing with the current state in the SQL database.
-* `history-result directory: contains the full history that can be published to help other validator nodes to catch up (e.g., S3, GCS, IPFS, or any other file storage).
+* `history-result` directory: contains the full history that can be published to help other validator nodes to catch up (e.g., S3, GCS, IPFS, or any other file storage).
 
 Note: make sure you have a consistent state of the three pieces of data before starting Stellar Core in SCP mode (e.g., when moving data to another machine).
 
