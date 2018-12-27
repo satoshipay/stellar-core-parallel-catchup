@@ -1,4 +1,4 @@
-# (Hacky!) Parallel Stellar Core Catchup
+# Parallel Stellar Core Catchup
 
 ## Background
 
@@ -22,14 +22,20 @@ A full catchup takes weeks/months – even without publishing to an archive.
 ./catchup.sh DOCKER_COMPOSE_FILE LEDGER_MIN LEDGER_MAX CHUNK_SIZE WORKERS
 ```
 
-If you need to start from scratch again you can delete all docker-compose projects:
+Arguments:
 
-```
-for PROJECT in $(docker ps --filter "label=com.docker.compose.project" -q | xargs docker inspect --format='{{index .Config.Labels "com.docker.compose.project"}}'| uniq | grep catchup-); do docker-compose -f docker-compose.pubnet.yaml -p $PROJECT down -v; done
-docker volume prune
-```
+* `DOCKER_COMPOSE_FILE`: use `docker-compose.pubnet.yaml` for the public network (`docker-compose.testnet.yaml` for testnet).
+* `LEDGER_MIN`: smallest ledger number you want. Use `1` for doing a full sync.
+* `LEDGER_MAX`: largest ledger number you want, usually you'll want the latest one which is exposed as `core_latest_ledger` in any synced Horizon server, e.g. https://stellar-horizon.satoshipay.io/.
+* `CHUNK_SIZE`: number of ledgers to work on in one worker.
+* `WORKERS`: number of workers that should be spawned. For best performance this should not exceed the number of CPUs.
 
-## Fast sync on dedicated gcloud machine
+## Hardware sizing and timing examples
+
+* On Google Cloud a full sync took less than 24h on a `n1-standard-32` machine (32 CPUs, 120GB RAM, 1TB SSD) with a `CHUNK_SIZE` of `32768` and 32 workers (see below).
+* ... add your achieved result here by submitting a PR.
+
+## Example run on dedicated Google Cloud machine
 
 ```
 sudo apt-get update
@@ -56,8 +62,31 @@ docker ps
 ```
 
 ```
-git clone git@gitlab.satoshipay.tech:stellar/parallel-catchup.git
-cd parallel-catchup
+git clone git@github.com:satoshipay/stellar-core-parallel-catchup.git
+cd stellar-core-parallel-catchup
 ./catchup.sh docker-compose.pubnet.yaml 1 20971520 32768 32 2>&1 | tee catchup.log
-docker exec catchup-result_stellar-core-postgres_1 pg_dump -F d -f catchup-sqldump -j 10 -U postgres -d stellar-core
+```
+
+You will get 3 important pieces of data for Stellar Core:
+
+* SQL database: if you need to move the data to another container/machine you can dump the database by running the following:
+
+    ```
+    docker exec catchup-result_stellar-core-postgres_1 pg_dump -F d -f catchup-sqldump -j 10 -U postgres -d stellar-core
+    ```
+
+    Then copy the `catchup-sqldump` directory to the target container/machine and restore with `pg_restore`.
+
+* `data-result` directory: contains the `buckets` directory that Stellar Core needs for continuing with the current state in the SQL database.
+* `history-result directory: contains the full history that can be published to help other validator nodes to catch up (e.g., S3, GCS, IPFS, or any other file storage).
+
+Note: make sure you have a consistent state of the three pieces of data before starting Stellar Core in SCP mode (e.g., when moving data to another machine).
+
+## Reset
+
+If you need to start from scratch again you can delete all docker-compose projects:
+
+```
+for PROJECT in $(docker ps --filter "label=com.docker.compose.project" -q | xargs docker inspect --format='{{index .Config.Labels "com.docker.compose.project"}}'| uniq | grep catchup-); do docker-compose -f docker-compose.pubnet.yaml -p $PROJECT down -v; done
+docker volume prune
 ```
