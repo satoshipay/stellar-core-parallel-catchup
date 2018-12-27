@@ -25,14 +25,17 @@ services:
       - NETWORK_PASSPHRASE=Test SDF Network ; September 2015
       - MAX_PEER_CONNECTIONS=30
       - "KNOWN_PEERS=\
+        stellar-testnet-de-fra.satoshipay.io,\
         core-testnet1.stellar.org,\
         core-testnet2.stellar.org,\
         core-testnet3.stellar.org"
       - "PREFERRED_PEERS=\
+        stellar-testnet-de-fra.satoshipay.io,\
         core-testnet1.stellar.org,\
         core-testnet2.stellar.org,\
         core-testnet3.stellar.org"
       - "NODE_NAMES=\
+        GC5TQJOHBX6NRGJHKVN3YMQGCVHJHKND4J2CV6RYVPIYZRX7STPSLEJL satoshipay-testnet-de-fra,\
         GDKXE2OZMJIPOSLNA6N6F2BVCI3O777I2OOC4BV7VOYUEHYX7RTRYA7Y sdf1,\
         GCUCJTIYXSOXKBSNFGNFWW5MUQ54HKRPGJUTQFJ5RQXZXNOLNXYDHRAP sdf2,\
         GC2V2EFSXN6SQTWVYA5EPJPBWWIMSD2XQNKUOHGEKB535AQE2I6IXV2Z sdf3"
@@ -41,6 +44,7 @@ services:
             {
               "threshold_percent": 66,
               "validators": [
+                "$$satoshipay-testnet-de-fra",
                 "$$sdf1",
                 "$$sdf2",
                 "$$sdf3"
@@ -52,6 +56,7 @@ services:
       - FAILURE_SAFETY=1
       - >-
           HISTORY={
+            "satoshipay-testnet-de-fra": {"get": "curl -sf https://stellar-history-testnet-de-fra.satoshipay.io/{0} -o {1}"},
             "sdf1": {"get": "curl -sf http://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-testnet/core_testnet_001/{0} -o {1}"},
             "sdf2": {"get": "curl -sf http://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-testnet/core_testnet_002/{0} -o {1}"},
             "sdf3": {"get": "curl -sf http://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-testnet/core_testnet_003/{0} -o {1}"},
