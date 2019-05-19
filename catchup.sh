@@ -161,7 +161,7 @@ for JOB_ID in $(seq 1 $MAX_JOB_ID); do
 
   if [ "$JOB_ID" = "$MAX_JOB_ID" ]; then
     log "Copy state from job $JOB_ID to result database..."
-    for TABLE in accountdata accounts ban offers peers publishqueue pubsub scphistory scpquorums signers storestate trustlines; do
+    for TABLE in accountdata accounts ban offers peers publishqueue pubsub quoruminfo scphistory scpquorums storestate trustlines; do
       # wipe existing data
       docker-compose -f $DOCKER_COMPOSE_FILE -p catchup-result exec -T stellar-core-postgres \
         psql stellar-core postgres -c "DELETE FROM $TABLE"
