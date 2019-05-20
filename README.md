@@ -32,7 +32,18 @@ Arguments:
 
 ## Hardware sizing and timing examples
 
-* On Google Cloud a full sync took less than 24h on a `n1-standard-32` machine (32 CPUs, 120GB RAM, 1TB SSD) with a `CHUNK_SIZE` of `32768` and 32 workers (see below).
+* 2019-05-19: 23 hours with a `CHUNK_SIZE` of `32768` and 50 workers on a `n1-standard-64` machine on Google Cloud (64 CPUs, 240GB RAM, 2TB SSD)
+
+    ```
+    ./catchup.sh docker-compose.pubnet.yaml 1 23920640 32768 50 2>&1 | tee catchup.log
+    ```
+
+* 2018-12-20: 24 hours with a `CHUNK_SIZE` of `32768` and 32 workers on a `n1-standard-32` machine on Google Cloud (32 CPUs, 120GB RAM, 1TB SSD) 
+
+    ```
+    ./catchup.sh docker-compose.pubnet.yaml 1 20971520 32768 32 2>&1 | tee catchup.log
+    ```
+
 * ... add your achieved result here by submitting a PR.
 
 ## Example run on dedicated Google Cloud machine
