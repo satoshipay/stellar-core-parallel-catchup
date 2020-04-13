@@ -1,7 +1,7 @@
 version: '3'
 services:
   stellar-core-postgres:
-    image: postgres:10
+    image: postgres:12
     restart: on-failure
     volumes:
       - db-data:/var/lib/postgresql/data
@@ -10,7 +10,7 @@ services:
       - POSTGRES_PASSWORD=RonUQgj23En5Mmo4
 
   stellar-core:
-    image: satoshipay/stellar-core:11.0.0
+    image: satoshipay/stellar-core:12.5.0
     restart: on-failure
     volumes:
       - core-data:/data
