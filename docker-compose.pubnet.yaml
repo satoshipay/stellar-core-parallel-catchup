@@ -7,7 +7,7 @@ services:
       - db-data:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=stellar-core
-      - POSTGRES_PASSWORD=RonUQgj23En5Mmo4
+      - POSTGRES_PASSWORD=SomeRandomPassword
 
   stellar-core:
     image: satoshipay/stellar-core:12.5.0
