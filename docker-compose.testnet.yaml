@@ -7,7 +7,7 @@ services:
       - db-data:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=stellar-core
-      - POSTGRES_PASSWORD=RonUQgj23En5Mmo4
+      - POSTGRES_PASSWORD=S0m3R4nd0mP455w0rd
 
   stellar-core:
     image: satoshipay/stellar-core:12.5.0
@@ -16,7 +16,7 @@ services:
       - core-data:/data
     environment:
       - DATABASE=postgresql://dbname=stellar-core user=postgres password=DATABASE_PASSWORD host=stellar-core-postgres
-      - DATABASE_PASSWORD=RonUQgj23En5Mmo4
+      - DATABASE_PASSWORD=S0m3R4nd0mP455w0rd
       - INITIALIZE_DB=false
       - INITIALIZE_HISTORY_ARCHIVES=false
       # public key GACVY6FX6ZSGBEWQF6DG25VOAB25F72EI4WS676QIO3HO2YBKAKDI44H
